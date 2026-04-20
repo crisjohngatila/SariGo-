@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="theme-color" content="#F97316">
+    <title>SariGo POS</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body>
+
+    <div id="toast" class="toast">Message</div>
+
+    <header>
+        <div class="brand-area"><h1>SariGo</h1></div>
+        <small id="status-text">🟢 System Active</small>
+    </header>
+
+    <nav>
+        <button id="nav-scan" class="active" onclick="showSection('scan-section')">📸 Scan</button>
+        <button id="nav-items" onclick="showSection('inventory-section')">📦 Items</button>
+        <button id="nav-history" onclick="showSection('history-section')">📊 Sales</button>
+        <button id="nav-debt" onclick="showSection('debt-section')">💸 Debt</button>
+    </nav>
+
+    <main>
+        <section id="scan-section">
+            <div id="reader-container"><div id="reader"></div></div>
+            <div class="cart-card">
+                <div class="section-header">
+                    <h3 id="cart-title">🛒 Current Cart</h3>
+                    <button class="btn-text-danger" onclick="clearCart()">Clear All</button>
+                </div>
+                <ul id="cart-list"></ul>
+                <div class="checkout-box">
+                    <div class="total-bar">
+                        <span>Total:</span>
+                        <span class="text-primary">₱<span id="cart-total">0.00</span></span>
+                    </div>
+                    <div id="normal-checkout-area">
+                        <div class="calculator-area">
+                            <input type="number" id="cash-received" placeholder="Cash Received (₱)" oninput="calculateChange()">
+                            <div class="change-display">Change: <b>₱<span id="change-amount">0.00</span></b></div>
+                        </div>
+                        <button class="btn-complete" onclick="completeSale()">COMPLETE SALE</button>
+                    </div>
+                    <div id="debt-checkout-area" style="display:none;">
+                        <button class="btn-complete" style="background: #333;" onclick="confirmDebtSale()">CONFIRM DEBT ENTRY</button>
+                        <button class="btn-secondary" onclick="cancelDebtMode()">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="add-item-scan-section" style="display:none;">
+            <div class="section-header">
+                <h3>📸 Scan New Product</h3>
+                <button class="btn-secondary" style="width:auto; padding: 5px 15px;" onclick="showSection('inventory-section')">Back</button>
+            </div>
+            <div id="new-item-reader-container" style="background: #000; border-radius: 12px; overflow: hidden; min-height: 250px;">
+                <div id="new-item-reader"></div>
+            </div>
+            <div class="debt-info-tag" style="margin-top:20px;">
+                Point the camera at the new product's barcode to register it in your database.
+            </div>
+        </section>
+
+        <section id="inventory-section" style="display:none;">
+            <div class="section-header">
+                <h3>Product Database</h3>
+                <button class="btn-primary-small" onclick="startNewItemScanner()">📸 Scan New Item</button>
+            </div>
+            <div id="inventory-list"></div>
+        </section>
+
+        <section id="history-section" style="display:none;">
+            <div class="section-header">
+                <h3>Sales History</h3>
+                <button class="btn-text-danger" onclick="clearHistory()">Reset Records</button>
+            </div>
+            <div id="history-list"></div>
+        </section>
+
+        <section id="debt-section" style="display:none;">
+            <div class="section-header">
+                <h3>Debt Tracker</h3>
+                <div style="display:flex; gap:5px;">
+                    <button class="btn-text-danger" onclick="clearDebtHistory()">Reset Records</button>
+                    <button class="btn-primary-small" onclick="openNewDebtModal()">+ New Debt</button>
+                </div>
+            </div>
+            <div class="search-bar">
+                <input type="text" id="debt-search" placeholder="Search customer name..." oninput="renderDebts()">
+            </div>
+            <div id="debt-list"></div>
+        </section>
+    </main>
+
+    <div id="qty-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h4>Add to Cart</h4>
+            <p id="qty-item-name" style="color:var(--primary); font-weight:bold;"></p>
+            <div class="input-group">
+                <label>How many?</label>
+                <input type="number" id="qty-input" value="1" min="1" style="font-size: 1.5rem; text-align: center;">
+            </div>
+            <div class="modal-btns">
+                <button class="btn-complete" onclick="confirmQty()">Confirm</button>
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="product-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h4>Product Details</h4>
+            <div class="barcode-display">
+                <small>Barcode Code</small>
+                <b id="new-barcode-val">---</b>
+            </div>
+            <div class="input-group">
+                <label>Item Name</label>
+                <input type="text" id="new-p-name">
+            </div>
+            <div class="input-group">
+                <label>Price (₱)</label>
+                <input type="number" id="new-p-price">
+            </div>
+            <div class="modal-btns">
+                <button class="btn-complete" onclick="saveProduct()">Save Product</button>
+                <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="new-debt-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <h4>New Debt Entry</h4>
+            <input type="text" id="debt-customer" placeholder="Customer Name" style="width:100%; margin-bottom:10px;">
+            <input type="text" id="debt-notes" placeholder="Notes (Optional)" style="width:100%; margin-bottom:15px;">
+            <button class="btn-complete" onclick="startDebtScanning()">📸 Scan Items</button>
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+        </div>
+    </div>
+
+    <div id="debt-detail-modal" class="modal" style="display:none;">
+        <div class="modal-content">
+            <div class="section-header"><h4 id="detail-customer-name">---</h4><button class="btn-text-danger" onclick="deleteDebt()">Delete</button></div>
+            <div class="receipt-row"><b>Balance:</b> <b id="detail-balance" class="text-primary">₱0.00</b></div>
+            <input type="number" id="payment-amount" placeholder="Amount Paid" style="width:100%; margin:10px 0;">
+            <button class="btn-complete" onclick="submitPayment()">Record Payment</button>
+            <div id="payment-history-list" style="margin-top:15px; max-height:150px; overflow-y:auto;"></div>
+            <button class="btn-secondary" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <div id="receipt-modal" class="modal" style="display:none;">
+        <div class="modal-content receipt-content">
+            <h3>Receipt</h3>
+            <p id="receipt-date"></p><div class="divider"></div>
+            <div id="receipt-items"></div><div id="receipt-total"></div>
+            <button class="btn-complete" onclick="closeModal()">Close</button>
+        </div>
+    </div>
+
+    <div id="confirm-modal" class="modal" style="display:none; z-index: 2000;">
+        <div class="modal-content" style="text-align: center;">
+            <div id="confirm-icon" style="font-size: 3rem; margin-bottom: 10px;">⚠️</div>
+            <h3 id="confirm-title" style="margin: 0 0 10px 0;">Are you sure?</h3>
+            <p id="confirm-msg" style="color: var(--gray); margin-bottom: 20px;"></p>
+            <div class="modal-btns" style="flex-direction: column; gap: 10px;">
+                <button id="confirm-yes" class="btn-complete" style="background: var(--danger);">Yes, Proceed</button>
+                <button id="confirm-no" class="btn-secondary" style="margin-top:0;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
